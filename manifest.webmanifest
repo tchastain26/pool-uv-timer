@@ -1,0 +1,15 @@
+{
+  "name": "Pool UV Timer",
+  "short_name": "Pool UV",
+  "description": "Poolside sun-exposure timer for four kids.",
+  "start_url": "pool-uv-timer.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1117",
+  "theme_color": "#F59E0B",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

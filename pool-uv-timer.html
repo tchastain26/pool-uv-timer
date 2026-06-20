@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3EA72D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pool UV">
+<title>Pool UV Timer</title>
+<style>
+  :root {
+    --uv-accent: #3EA72D;
+    --uv-accent-text: #ffffff;
+    --bg: #0d1117;
+    --card: #161b22;
+    --card-2: #1f2630;
+    --text: #f5f7fa;
+    --text-dim: #aeb6c2;
+    --border: #2b3340;
+    --warn: #F18B00;
+    --alert: #E54D2E;
+    --ok: #3EA72D;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 14px 14px 60px;
+  }
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Menlo", "Roboto Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* UV HEADER */
+  .uv-head {
+    background: var(--uv-accent);
+    color: var(--uv-accent-text);
+    border-radius: 18px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    transition: background 0.4s ease;
+  }
+  .uv-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .uv-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.92;
+    font-weight: 700;
+  }
+  .uv-value {
+    font-size: 3.4rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .uv-cat {
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin-top: 2px;
+  }
+  .uv-meta {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    margin-top: 6px;
+  }
+  .uv-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 12px 16px;
+    min-height: 48px;
+    cursor: pointer;
+    color: var(--text);
+    background: var(--card-2);
+    border: 1px solid var(--border);
+  }
+  .btn:active { transform: scale(0.98); }
+  .uv-actions .btn {
+    background: rgba(0,0,0,0.22);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.35);
+    flex: 1;
+  }
+
+  /* fallback / manual */
+  .fallback {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .fallback.hidden { display: none; }
+  .fallback .msg {
+    color: var(--warn);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  input[type="range"] { width: 100%; height: 40px; accent-color: var(--uv-accent); }
+  .slider-val { font-size: 1.6rem; font-weight: 800; min-width: 2.2ch; text-align: right; }
+
+  /* SETTINGS */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .panel h2 {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+  }
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    background: var(--card-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 1rem;
+    min-height: 50px;
+  }
+
+  /* KID CARDS */
+  .kid {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 14px;
+    border-left: 6px solid var(--uv-accent);
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .kid.warn { border-left-color: var(--warn); }
+  .kid.alert {
+    border-left-color: var(--alert);
+    border-color: var(--alert);
+    background: #2a1512;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(229,77,46,0.0); }
+    50% { box-shadow: 0 0 0 5px rgba(229,77,46,0.35); }
+  }
+  .kid-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .kid-name {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border);
+    color: var(--text);
+    font-size: 1.15rem;
+    font-weight: 800;
+    padding: 6px 2px;
+    min-width: 0;
+  }
+  .kid-name:focus { outline: none; border-bottom-color: var(--uv-accent); }
+
+  .timers { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .timer-block { flex: 1; }
+  .timer-block .cap {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    font-weight: 700;
+  }
+  .timer-block .val { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+  .timer-block .limit { font-size: 0.78rem; color: var(--text-dim); }
+
+  .gauge {
+    height: 16px;
+    background: var(--card-2);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 8px 0 4px;
+    border: 1px solid var(--border);
+  }
+  .gauge-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--ok);
+    transition: width 0.5s ease, background 0.3s ease;
+  }
+  .pct-line { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-dim); margin-bottom: 10px; }
+  .pct-line .flag { font-weight: 800; }
+  .pct-line .flag.warn { color: var(--warn); }
+  .pct-line .flag.alert { color: var(--alert); }
+
+  .kid-controls { display: flex; gap: 8px; }
+  .btn-start { flex: 2; background: var(--ok); color: #06210a; }
+  .btn-start.running { background: var(--alert); color: #fff; }
+  .btn-reset { flex: 1; }
+
+  .sunscreen {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .ss-row { display: flex; align-items: center; gap: 12px; }
+  .ss-label { font-weight: 700; flex: 1; }
+  .spf-wrap { display: flex; align-items: center; gap: 6px; }
+  .spf-wrap.off { opacity: 0.4; }
+  .spf-input {
+    width: 70px;
+    background: var(--card-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 1rem;
+    text-align: center;
+  }
+  .ss-note { font-size: 0.72rem; color: var(--text-dim); margin-top: 8px; line-height: 1.4; }
+
+  /* toggle switch */
+  .switch { position: relative; display: inline-block; width: 56px; height: 32px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-sw {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 999px; transition: 0.2s;
+  }
+  .slider-sw:before {
+    content: ""; position: absolute; height: 24px; width: 24px;
+    left: 3px; top: 3px; background: var(--text-dim);
+    border-radius: 50%; transition: 0.2s;
+  }
+  .switch input:checked + .slider-sw { background: var(--uv-accent); border-color: var(--uv-accent); }
+  .switch input:checked + .slider-sw:before { transform: translateX(24px); background: #fff; }
+
+  .foot { text-align: center; font-size: 0.72rem; color: var(--text-dim); margin-top: 10px; line-height: 1.5; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kid.alert { animation: none; }
+    .btn:active { transform: none; }
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- UV HEADER -->
+  <div class="uv-head" id="uvHead">
+    <div class="uv-top">
+      <div>
+        <div class="uv-label">UV Index (Bluff City)</div>
+        <div class="uv-value mono" id="uvValue">--</div>
+        <div class="uv-cat" id="uvCat">Loading</div>
+      </div>
+    </div>
+    <div class="uv-meta" id="uvMeta">Fetching live data...</div>
+    <div class="uv-actions">
+      <button class="btn" id="refreshBtn">Refresh UV</button>
+    </div>
+  </div>
+
+  <!-- MANUAL FALLBACK -->
+  <div class="fallback hidden" id="fallback">
+    <div class="msg" id="fallbackMsg">Could not reach the UV service. Set it manually.</div>
+    <div class="slider-row">
+      <input type="range" id="uvSlider" min="0" max="12" step="1" value="6">
+      <div class="slider-val mono" id="uvSliderVal">6</div>
+    </div>
+  </div>
+
+  <!-- KID CARDS INJECTED HERE -->
+  <div id="kids"></div>
+
+  <div class="foot">
+    Estimates only, not medical advice. When in doubt, get out of the sun, cover up, and reapply.
+    Limits assume fair skin that burns easily (a safe default for kids).
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- constants ----------
+  // Minimal erythemal dose (J/m2). Fixed to a conservative fair-skin value
+  // so limits fail safe (shorter) for kids.
+  var KID_MED = 250;
+  var UV_API = "https://api.open-meteo.com/v1/forecast?latitude=36.467&longitude=-82.2596&current=uv_index&timezone=America/New_York";
+  var REFRESH_MS = 15 * 60 * 1000;
+  var STORE_KEY = "poolUvTimer.v1";
+
+  // UV category color scale (EPA standard)
+  function uvCategory(uv) {
+    if (uv == null) return { name: "Unknown", color: "#3EA72D", text: "#fff" };
+    if (uv < 3)  return { name: "Low",        color: "#3EA72D", text: "#fff" };
+    if (uv < 6)  return { name: "Moderate",   color: "#E0C000", text: "#1a1500" };
+    if (uv < 8)  return { name: "High",       color: "#F18B00", text: "#231200" };
+    if (uv < 11) return { name: "Very High",  color: "#E54D2E", text: "#fff" };
+    return         { name: "Extreme",         color: "#9C4DFF", text: "#fff" };
+  }
+
+  // ---------- state ----------
+  function todayStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "." + m + "." + day;
+  }
+
+  var KID_NAMES = ["Rhiley", "Harper", "Audrey", "Jaxson"];
+
+  function defaultKid(name) {
+    return {
+      name: name,
+      accumulated: 0,   // banked seconds today
+      running: false,
+      startTs: null,    // ms timestamp when started
+      sunscreen: false,
+      spf: 30,
+      alertFired: false
+    };
+  }
+
+  function defaultState() {
+    return {
+      date: todayStr(),
+      manualUV: 6,
+      kids: KID_NAMES.map(function (n) { return defaultKid(n); })
+    };
+  }
+
+  var state = load();
+  var liveUV = null;     // last good live value
+  var manualMode = false;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return defaultState();
+      var s = JSON.parse(raw);
+      if (!s || !s.kids || s.kids.length !== 4) return defaultState();
+      // daily reset
+      if (s.date !== todayStr()) {
+        s.date = todayStr();
+        s.kids.forEach(function (k) {
+          k.accumulated = 0;
+          k.running = false;
+          k.startTs = null;
+          k.alertFired = false;
+        });
+      }
+      return s;
+    } catch (e) {
+      return defaultState();
+    }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    } catch (e) { /* storage blocked, run in-memory */ }
+  }
+
+  // ---------- UV value resolution ----------
+  function currentUV() {
+    if (manualMode) return state.manualUV;
+    return liveUV;
+  }
+
+  // ---------- limit math ----------
+  // base limit in seconds; null = effectively unlimited (UV 0)
+  function baseLimitSeconds() {
+    var uv = currentUV();
+    if (uv == null || uv <= 0) return null;
+    var minutes = (0.667 * KID_MED) / uv;
+    return minutes * 60;
+  }
+
+  function kidLimitSeconds(k) {
+    var base = baseLimitSeconds();
+    if (base == null) return null;
+    if (k.sunscreen) {
+      var spf = k.spf > 0 ? k.spf : 1;
+      return base * spf;
+    }
+    return base;
+  }
+
+  function kidTotalSeconds(k) {
+    var t = k.accumulated;
+    if (k.running && k.startTs) {
+      t += (Date.now() - k.startTs) / 1000;
+    }
+    return t;
+  }
+
+  function kidSessionSeconds(k) {
+    if (k.running && k.startTs) return (Date.now() - k.startTs) / 1000;
+    return 0;
+  }
+
+  // ---------- audio ----------
+  var audioCtx = null;
+  function initAudio() {
+    if (audioCtx) {
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return;
+    }
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audioCtx = new AC();
+      // tiny silent blip to fully unlock on iOS
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      g.gain.value = 0;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + 0.01);
+    } catch (e) { audioCtx = null; }
+  }
+
+  function beep(times) {
+    if (!audioCtx) return;
+    var t0 = audioCtx.currentTime;
+    for (var i = 0; i < times; i++) {
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = "square";
+      o.frequency.value = 880;
+      var start = t0 + i * 0.32;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.5, start + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(start);
+      o.stop(start + 0.24);
+    }
+  }
+
+  function fireAlert() {
+    beep(3);
+    if (navigator.vibrate) {
+      try { navigator.vibrate([300, 120, 300, 120, 300]); } catch (e) {}
+    }
+  }
+
+  // ---------- formatting ----------
+  function fmt(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    var mm = String(m).padStart(2, "0");
+    var ss = String(s).padStart(2, "0");
+    if (h > 0) return h + ":" + mm + ":" + ss;
+    return mm + ":" + ss;
+  }
+
+  function fmtLimit(sec) {
+    if (sec == null) return "no limit";
+    var m = Math.round(sec / 60);
+    if (m >= 60) {
+      var h = Math.floor(m / 60);
+      var r = m % 60;
+      return h + "h " + (r ? r + "m" : "") ;
+    }
+    return m + " min";
+  }
+
+  // ---------- rendering ----------
+  var kidsEl = document.getElementById("kids");
+  var built = false;
+
+  function buildKids() {
+    state.kids.forEach(function (k, i) {
+      var card = document.createElement("div");
+      card.className = "kid";
+      card.dataset.i = i;
+      card.innerHTML =
+        '<div class="kid-top">' +
+          '<input class="kid-name" type="text" maxlength="18" data-act="name">' +
+        '</div>' +
+        '<div class="timers">' +
+          '<div class="timer-block">' +
+            '<div class="cap">Current session</div>' +
+            '<div class="val mono" data-f="session">00:00</div>' +
+          '</div>' +
+          '<div class="timer-block">' +
+            '<div class="cap">Today total</div>' +
+            '<div class="val mono" data-f="total">00:00</div>' +
+            '<div class="limit" data-f="limit">limit --</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="gauge"><div class="gauge-fill" data-f="fill"></div></div>' +
+        '<div class="pct-line">' +
+          '<span data-f="pct">0%</span>' +
+          '<span class="flag" data-f="flag"></span>' +
+        '</div>' +
+        '<div class="kid-controls">' +
+          '<button class="btn btn-start" data-act="start">Start</button>' +
+          '<button class="btn btn-reset" data-act="reset">Reset</button>' +
+        '</div>' +
+        '<div class="sunscreen">' +
+          '<div class="ss-row">' +
+            '<span class="ss-label">Sunscreen</span>' +
+            '<div class="spf-wrap"><label class="cap" style="color:var(--text-dim);font-size:.7rem;">SPF</label>' +
+              '<input class="spf-input mono" type="number" min="1" max="100" step="1" data-act="spf"></div>' +
+            '<label class="switch"><input type="checkbox" data-act="ss"><span class="slider-sw"></span></label>' +
+          '</div>' +
+          '<div class="ss-note">Real-world protection is lower than the SPF number implies (most people apply too little). Reapply every 2 hours and after swimming or toweling off.</div>' +
+        '</div>';
+      kidsEl.appendChild(card);
+
+      // wire events
+      var nameI = card.querySelector('[data-act="name"]');
+      nameI.addEventListener("input", function () { k.name = nameI.value; save(); });
+
+      card.querySelector('[data-act="start"]').addEventListener("click", function () {
+        initAudio();
+        toggleStart(k);
+      });
+      card.querySelector('[data-act="reset"]').addEventListener("click", function () {
+        resetKid(k);
+      });
+
+      var ss = card.querySelector('[data-act="ss"]');
+      ss.addEventListener("change", function () { k.sunscreen = ss.checked; save(); renderKid(i); });
+
+      var spf = card.querySelector('[data-act="spf"]');
+      spf.addEventListener("change", function () {
+        var v = parseInt(spf.value, 10);
+        if (isNaN(v) || v < 1) v = 1;
+        if (v > 100) v = 100;
+        k.spf = v; spf.value = v; save(); renderKid(i);
+      });
+    });
+    built = true;
+    // set static fields
+    state.kids.forEach(function (k, i) {
+      var card = kidsEl.children[i];
+      card.querySelector('[data-act="name"]').value = k.name;
+      card.querySelector('[data-act="ss"]').checked = k.sunscreen;
+      card.querySelector('[data-act="spf"]').value = k.spf;
+    });
+  }
+
+  function toggleStart(k) {
+    if (k.running) {
+      // stop: bank time
+      k.accumulated += (Date.now() - k.startTs) / 1000;
+      k.running = false;
+      k.startTs = null;
+    } else {
+      k.running = true;
+      k.startTs = Date.now();
+    }
+    save();
+    renderAll();
+  }
+
+  function resetKid(k) {
+    k.accumulated = 0;
+    k.running = false;
+    k.startTs = null;
+    k.alertFired = false;
+    save();
+    renderAll();
+  }
+
+  function renderKid(i) {
+    var k = state.kids[i];
+    var card = kidsEl.children[i];
+    if (!card) return;
+
+    var total = kidTotalSeconds(k);
+    var limit = kidLimitSeconds(k);
+    var session = kidSessionSeconds(k);
+
+    card.querySelector('[data-f="session"]').textContent = fmt(session);
+    card.querySelector('[data-f="total"]').textContent = fmt(total);
+    card.querySelector('[data-f="limit"]').textContent = "limit " + fmtLimit(limit);
+
+    var pct = (limit == null) ? 0 : (total / limit) * 100;
+    var fill = card.querySelector('[data-f="fill"]');
+    var pctEl = card.querySelector('[data-f="pct"]');
+    var flag = card.querySelector('[data-f="flag"]');
+
+    var shown = Math.min(100, pct);
+    fill.style.width = (limit == null ? 0 : shown) + "%";
+    pctEl.textContent = (limit == null) ? "no limit (UV 0)" : Math.round(pct) + "%";
+
+    card.classList.remove("warn", "alert");
+    flag.classList.remove("warn", "alert");
+    flag.textContent = "";
+
+    if (limit != null && pct >= 100) {
+      card.classList.add("alert");
+      fill.style.background = "var(--alert)";
+      flag.classList.add("alert");
+      flag.textContent = "LIMIT REACHED (get out of the sun)";
+      if (!k.alertFired) {
+        k.alertFired = true;
+        save();
+        fireAlert();
+      }
+    } else if (limit != null && pct >= 80) {
+      card.classList.add("warn");
+      fill.style.background = "var(--warn)";
+      flag.classList.add("warn");
+      flag.textContent = "80% (reapply sunscreen)";
+      if (k.alertFired) { k.alertFired = false; save(); }
+    } else {
+      fill.style.background = "var(--ok)";
+      if (k.alertFired) { k.alertFired = false; save(); }
+    }
+
+    // start button state
+    var startBtn = card.querySelector('[data-act="start"]');
+    if (k.running) {
+      startBtn.textContent = "Stop";
+      startBtn.classList.add("running");
+    } else {
+      startBtn.textContent = "Start";
+      startBtn.classList.remove("running");
+    }
+
+    // spf enabled/disabled visual
+    var spfWrap = card.querySelector(".spf-wrap");
+    if (k.sunscreen) spfWrap.classList.remove("off");
+    else spfWrap.classList.add("off");
+  }
+
+  function renderAll() {
+    if (!built) buildKids();
+    for (var i = 0; i < 4; i++) renderKid(i);
+  }
+
+  // ---------- UV header ----------
+  var uvHead = document.getElementById("uvHead");
+  var uvValueEl = document.getElementById("uvValue");
+  var uvCatEl = document.getElementById("uvCat");
+  var uvMetaEl = document.getElementById("uvMeta");
+  var fallbackEl = document.getElementById("fallback");
+
+  function applyAccent(cat) {
+    document.documentElement.style.setProperty("--uv-accent", cat.color);
+    document.documentElement.style.setProperty("--uv-accent-text", cat.text);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", cat.color);
+  }
+
+  function renderUV() {
+    var uv = currentUV();
+    var cat = uvCategory(uv);
+    applyAccent(cat);
+    uvValueEl.textContent = (uv == null) ? "--" : (Math.round(uv * 10) / 10);
+    uvCatEl.textContent = cat.name;
+    renderAll();
+  }
+
+  function setLive(uv) {
+    liveUV = uv;
+    manualMode = false;
+    fallbackEl.classList.add("hidden");
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2, "0");
+    var mm = String(now.getMinutes()).padStart(2, "0");
+    uvMetaEl.textContent = "Live data, updated " + hh + ":" + mm + " (auto-refresh every 15 min)";
+    renderUV();
+  }
+
+  function setManual() {
+    manualMode = true;
+    fallbackEl.classList.remove("hidden");
+    uvMetaEl.textContent = "Manual mode (no live data). Adjust the slider below.";
+    var slider = document.getElementById("uvSlider");
+    slider.value = state.manualUV;
+    document.getElementById("uvSliderVal").textContent = state.manualUV;
+    renderUV();
+  }
+
+  function fetchUV() {
+    uvMetaEl.textContent = "Fetching live data...";
+    fetch(UV_API, { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("bad response");
+        return r.json();
+      })
+      .then(function (data) {
+        var uv = data && data.current && data.current.uv_index;
+        if (typeof uv !== "number") throw new Error("no uv");
+        setLive(uv);
+      })
+      .catch(function () {
+        setManual();
+      });
+  }
+
+  // ---------- wiring ----------
+  document.getElementById("refreshBtn").addEventListener("click", fetchUV);
+
+  var slider = document.getElementById("uvSlider");
+  slider.addEventListener("input", function () {
+    state.manualUV = parseInt(slider.value, 10);
+    document.getElementById("uvSliderVal").textContent = state.manualUV;
+    save();
+    if (manualMode) renderUV();
+  });
+
+  // re-init audio on any first interaction (iOS safety)
+  document.addEventListener("touchend", initAudio, { once: true });
+  document.addEventListener("click", initAudio, { once: true });
+
+  // re-check daily reset when returning to the tab
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && state.date !== todayStr()) {
+      state.date = todayStr();
+      state.kids.forEach(function (k) {
+        k.accumulated = 0; k.running = false; k.startTs = null; k.alertFired = false;
+      });
+      save();
+      renderAll();
+    }
+  });
+
+  // ---------- boot ----------
+  renderAll();        // draw cards immediately from stored state
+  renderUV();         // draw header with whatever UV we have (null -> --)
+  fetchUV();          // try live data
+  setInterval(function () { renderAll(); }, 1000);   // tick timers
+  setInterval(fetchUV, REFRESH_MS);                  // auto-refresh UV
+
+  // register service worker for offline use (HTTPS or localhost only)
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+
+})();
+</script>
+</body>
+</html>
