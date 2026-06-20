@@ -2,7 +2,7 @@
    Caches the app shell so it opens offline (no signal at the pool).
    Live UV requests (cross-origin Open-Meteo) are never intercepted, so they
    always hit the network and fall back to the manual slider when offline. */
-var CACHE = "pool-uv-v3";
+var CACHE = "pool-uv-v4";
 var SHELL = [
   "pool-uv-timer.html",
   "manifest.webmanifest",

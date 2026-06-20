@@ -248,6 +248,12 @@
     font-size: 1rem;
     text-align: center;
   }
+  .reapply-row { display: none; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+  .reapply-row.on { display: flex; }
+  .reapply-txt { font-size: 0.85rem; font-weight: 700; color: var(--text-dim); }
+  .reapply-txt.due { color: var(--alert); }
+  .btn-reapply { flex: none; background: var(--card-2); padding: 8px 14px; min-height: 40px; font-size: 0.85rem; }
+  .reapply-row.due .btn-reapply { background: var(--warn); color: #231200; }
   .advisory {
     background: #2a1f05;
     border: 1px solid var(--warn);
@@ -333,6 +339,7 @@
   // Minimal erythemal dose (J/m2). Fixed to a conservative fair-skin value
   // so limits fail safe (shorter) for kids.
   var KID_MED = 250;
+  var REAPPLY_SECONDS = 2 * 3600;   // reapply sunscreen every 2 hours of sun
   var UV_API = "https://api.open-meteo.com/v1/forecast?latitude=36.467&longitude=-82.2596&current=uv_index&timezone=America/New_York";
   var REFRESH_MS = 15 * 60 * 1000;
   var STORE_KEY = "poolUvTimer.v1";
@@ -365,7 +372,9 @@
       startTs: null,    // ms timestamp when started
       sunscreen: false,
       spf: 30,
-      alertFired: false
+      alertFired: false,
+      reapplyBase: 0,      // total sun-seconds at last application
+      reapplyFired: false
     };
   }
 
@@ -387,6 +396,11 @@
       if (!raw) return defaultState();
       var s = JSON.parse(raw);
       if (!s || !s.kids || s.kids.length !== 4) return defaultState();
+      // backfill fields added in later versions
+      s.kids.forEach(function (k) {
+        if (typeof k.reapplyBase !== "number") k.reapplyBase = 0;
+        if (typeof k.reapplyFired !== "boolean") k.reapplyFired = false;
+      });
       // daily reset
       if (s.date !== todayStr()) {
         s.date = todayStr();
@@ -395,6 +409,8 @@
           k.running = false;
           k.startTs = null;
           k.alertFired = false;
+          k.reapplyBase = 0;
+          k.reapplyFired = false;
         });
       }
       return s;
@@ -497,6 +513,13 @@
     }
   }
 
+  function reapplyAlert() {
+    beep(2);
+    if (navigator.vibrate) {
+      try { navigator.vibrate([150, 80, 150]); } catch (e) {}
+    }
+  }
+
   // ---------- formatting ----------
   function fmt(sec) {
     sec = Math.max(0, Math.floor(sec));
@@ -560,6 +583,10 @@
               '<input class="spf-input mono" type="number" min="1" max="100" step="1" data-act="spf"></div>' +
             '<label class="switch"><input type="checkbox" data-act="ss"><span class="slider-sw"></span></label>' +
           '</div>' +
+          '<div class="reapply-row" data-f="reapplyrow">' +
+            '<span class="reapply-txt" data-f="reapplytxt"></span>' +
+            '<button class="btn btn-reapply" data-act="reapply">Reapplied</button>' +
+          '</div>' +
         '</div>';
       kidsEl.appendChild(card);
 
@@ -576,7 +603,21 @@
       });
 
       var ss = card.querySelector('[data-act="ss"]');
-      ss.addEventListener("change", function () { k.sunscreen = ss.checked; save(); renderKid(i); });
+      ss.addEventListener("change", function () {
+        k.sunscreen = ss.checked;
+        if (k.sunscreen) {           // turning it on counts as a fresh application
+          k.reapplyBase = kidTotalSeconds(k);
+          k.reapplyFired = false;
+        }
+        save(); renderKid(i);
+      });
+
+      card.querySelector('[data-act="reapply"]').addEventListener("click", function () {
+        initAudio();
+        k.reapplyBase = kidTotalSeconds(k);
+        k.reapplyFired = false;
+        save(); renderKid(i);
+      });
 
       var spf = card.querySelector('[data-act="spf"]');
       spf.addEventListener("change", function () {
@@ -680,6 +721,28 @@
     var spfWrap = card.querySelector(".spf-wrap");
     if (k.sunscreen) spfWrap.classList.remove("off");
     else spfWrap.classList.add("off");
+
+    // reapply timer (only while sunscreen is on)
+    var reapplyRow = card.querySelector('[data-f="reapplyrow"]');
+    var reapplyTxt = card.querySelector('[data-f="reapplytxt"]');
+    if (k.sunscreen) {
+      reapplyRow.classList.add("on");
+      var since = total - (k.reapplyBase || 0);
+      var remain = REAPPLY_SECONDS - since;
+      if (remain <= 0) {
+        reapplyRow.classList.add("due");
+        reapplyTxt.classList.add("due");
+        reapplyTxt.textContent = "Reapply sunscreen now";
+        if (!k.reapplyFired) { k.reapplyFired = true; save(); reapplyAlert(); }
+      } else {
+        reapplyRow.classList.remove("due");
+        reapplyTxt.classList.remove("due");
+        reapplyTxt.textContent = "Reapply in " + fmt(remain);
+        if (k.reapplyFired) { k.reapplyFired = false; save(); }
+      }
+    } else {
+      reapplyRow.classList.remove("on", "due");
+    }
   }
 
   function renderAll() {
