@@ -415,7 +415,12 @@
     if (base == null) return null;
     if (k.sunscreen) {
       var spf = k.spf > 0 ? k.spf : 1;
-      return base * spf;
+      // Real-world protection runs far below the labeled SPF because almost
+      // nobody applies the 2 mg/cm2 test thickness. Photobiology puts typical
+      // effective protection near the square root of the labeled SPF, so use
+      // that instead of a raw base * SPF (which would imply all-day safety).
+      var effectiveSpf = Math.sqrt(spf);
+      return base * effectiveSpf;
     }
     return base;
   }
@@ -541,7 +546,7 @@
               '<input class="spf-input mono" type="number" min="1" max="100" step="1" data-act="spf"></div>' +
             '<label class="switch"><input type="checkbox" data-act="ss"><span class="slider-sw"></span></label>' +
           '</div>' +
-          '<div class="ss-note">Real-world protection is lower than the SPF number implies (most people apply too little). Reapply every 2 hours and after swimming or toweling off.</div>' +
+          '<div class="ss-note">This limit already discounts the SPF for typical (thin) application, so it is well below the labeled number. Reapply every 2 hours and after swimming or toweling off.</div>' +
         '</div>';
       kidsEl.appendChild(card);
 
